@@ -1,0 +1,19 @@
+/*
+ * Design tokens for KitCrate. These are registered with Tailwind's v4 theme
+ * layer (which also emits them as real :root CSS custom properties), so
+ * every color and font here is available both as a Tailwind utility
+ * (bg-concrete, text-charcoal, font-display, ...) and as var(--color-*) /
+ * var(--font-*) for hand-written CSS, e.g. the CheckoutTag's punched hole.
+ */
+@theme {
+  --color-concrete: #dedbd3;
+  --color-paper: #f5f3ee;
+  --color-charcoal: #21241f;
+  --color-amber: #e2a63b;
+  --color-deposit-green: #4c6b4f;
+  --color-rivet: #9a958a;
+
+  --font-display: var(--font-display-family), "Arial Narrow", sans-serif;
+  --font-sans: var(--font-body-family), -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-mono-family), "SFMono-Regular", Menlo, monospace;
+}
