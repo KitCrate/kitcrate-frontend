@@ -1,6 +1,11 @@
 import { IndexerApiError, type Agreement, type AgreementEvent, type Listing } from "@kitcrate/sdk";
 import { notFound } from "next/navigation";
-import { CancelAgreementButton, ReleaseFundsButton } from "@/components/AgreementActions";
+import {
+  CancelAgreementButton,
+  FundAgreementButton,
+  ReleaseFundsButton,
+  StartRentalButton,
+} from "@/components/AgreementActions";
 import { AgreementStatusTag } from "@/components/AgreementStatusTag";
 import { ClaimForm } from "@/components/ClaimForm";
 import { formatCurrency, formatDate, truncateMiddle } from "@/lib/format";
@@ -115,6 +120,8 @@ export default async function AgreementDetailPage({
         </div>
       </div>
 
+      <FundAgreementButton agreement={agreement} />
+      <StartRentalButton agreement={agreement} />
       <ClaimForm agreement={agreement} />
       <ReleaseFundsButton agreement={agreement} />
       <CancelAgreementButton agreement={agreement} />
