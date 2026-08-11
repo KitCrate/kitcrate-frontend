@@ -1,6 +1,7 @@
 import { IndexerApiError, type Agreement, type AgreementEvent, type Listing } from "@kitcrate/sdk";
 import { notFound } from "next/navigation";
 import { AgreementStatusTag } from "@/components/AgreementStatusTag";
+import { ClaimForm } from "@/components/ClaimForm";
 import { formatCurrency, formatDate, truncateMiddle } from "@/lib/format";
 import { indexerClient } from "@/lib/indexer";
 
@@ -112,6 +113,8 @@ export default async function AgreementDetailPage({
           )}
         </div>
       </div>
+
+      <ClaimForm agreement={agreement} />
     </div>
   );
 }
