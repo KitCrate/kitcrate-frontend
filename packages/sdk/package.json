@@ -1,0 +1,18 @@
+{
+  "name": "@kitcrate/sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed client for the RentalEscrow contract, wallet connect, and the kitcrate-backend indexer API.",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@stellar/stellar-sdk": "^16.2.0",
+    "@stellar/freighter-api": "^6.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
