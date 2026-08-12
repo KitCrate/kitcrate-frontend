@@ -3,7 +3,6 @@ import {
   addressToScVal,
   i128ToScVal,
   stringToScVal,
-  u32ToScVal,
   u64ToScVal,
 } from "./xdr";
 
@@ -80,7 +79,7 @@ export class RentalEscrowClient {
       i128ToScVal(params.depositAmount),
       u64ToScVal(params.startTime),
       u64ToScVal(params.endTime),
-      u32ToScVal(params.claimWindowSecs),
+      u64ToScVal(params.claimWindowSecs),
     ]);
   }
 
