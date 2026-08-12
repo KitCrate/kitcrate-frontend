@@ -4,11 +4,16 @@ import { signXdr, type Agreement } from "@kitcrate/sdk";
 import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { requireRentalEscrowClient } from "@/lib/contract";
+import { contractErrorMessage } from "@/lib/contract-errors";
 import { useWallet } from "@/lib/wallet-context";
 
 type ActionStep = "idle" | "confirm" | "signing" | "submitting" | "done" | "error";
 
-function useAgreementAction(agreementId: string, run: (address: string, id: bigint) => Promise<string>) {
+function useAgreementAction(
+  agreementId: string,
+  run: (address: string, id: bigint) => Promise<string>,
+  fallback: string,
+) {
   const router = useRouter();
   const { account } = useWallet();
   const [step, setStep] = useState<ActionStep>("idle");
@@ -37,7 +42,7 @@ function useAgreementAction(agreementId: string, run: (address: string, id: bigi
       router.refresh();
     } catch (err) {
       setStep("error");
-      setError(err instanceof Error ? err.message : "The transaction did not go through.");
+      setError(contractErrorMessage(err, fallback));
     }
   }
 
@@ -53,8 +58,10 @@ export function FundAgreementButton({ agreement }: { agreement: Agreement }) {
   const { account } = useWallet();
   const isEligible = agreement.status === "Created" && account?.address === agreement.renter;
 
-  const { step, setStep, error, confirm } = useAgreementAction(agreement.id, (address, id) =>
-    requireRentalEscrowClient().buildFundAgreement(address, id),
+  const { step, setStep, error, confirm } = useAgreementAction(
+    agreement.id,
+    (address, id) => requireRentalEscrowClient().buildFundAgreement(address, id),
+    "The agreement could not be funded. Try again, or check its current status.",
   );
 
   if (!isEligible) return null;
@@ -126,8 +133,10 @@ export function StartRentalButton({ agreement }: { agreement: Agreement }) {
   const { account } = useWallet();
   const isEligible = agreement.status === "Funded" && account?.address === agreement.owner;
 
-  const { step, setStep, error, confirm } = useAgreementAction(agreement.id, (address, id) =>
-    requireRentalEscrowClient().buildStartRental(address, id),
+  const { step, setStep, error, confirm } = useAgreementAction(
+    agreement.id,
+    (address, id) => requireRentalEscrowClient().buildStartRental(address, id),
+    "The rental could not be started. Try again, or check the agreement's current status.",
   );
 
   if (!isEligible) return null;
@@ -218,8 +227,10 @@ export function ReleaseFundsButton({ agreement }: { agreement: Agreement }) {
   const { account } = useWallet();
   const isEligible = useReleaseEligible(agreement);
 
-  const { step, setStep, error, confirm } = useAgreementAction(agreement.id, (address, id) =>
-    requireRentalEscrowClient().buildReleaseFunds(address, id),
+  const { step, setStep, error, confirm } = useAgreementAction(
+    agreement.id,
+    (address, id) => requireRentalEscrowClient().buildReleaseFunds(address, id),
+    "The funds could not be released. Try again, or check the agreement's current status.",
   );
 
   if (!isEligible) return null;
@@ -293,8 +304,10 @@ export function CancelAgreementButton({ agreement }: { agreement: Agreement }) {
   const isParty = account?.address === agreement.owner || account?.address === agreement.renter;
   const isEligible = (agreement.status === "Created" || agreement.status === "Funded") && isParty;
 
-  const { step, setStep, error, confirm } = useAgreementAction(agreement.id, (address, id) =>
-    requireRentalEscrowClient().buildCancelAgreement(address, id),
+  const { step, setStep, error, confirm } = useAgreementAction(
+    agreement.id,
+    (address, id) => requireRentalEscrowClient().buildCancelAgreement(address, id),
+    "The agreement could not be cancelled. Try again, or check its current status.",
   );
 
   if (!isEligible) return null;

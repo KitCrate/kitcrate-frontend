@@ -4,6 +4,7 @@ import { signXdr, type Agreement } from "@kitcrate/sdk";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { requireRentalEscrowClient } from "@/lib/contract";
+import { contractErrorMessage } from "@/lib/contract-errors";
 import { formatCurrency } from "@/lib/format";
 import { toBaseUnits } from "@/lib/token";
 import { useWallet } from "@/lib/wallet-context";
@@ -76,7 +77,12 @@ export function ClaimForm({ agreement }: { agreement: Agreement }) {
       router.refresh();
     } catch (err) {
       setStep("error");
-      setError(err instanceof Error ? err.message : "Could not raise the claim.");
+      setError(
+        contractErrorMessage(
+          err,
+          "The claim could not be raised. Try again, or check the agreement's current status.",
+        ),
+      );
     }
   }
 

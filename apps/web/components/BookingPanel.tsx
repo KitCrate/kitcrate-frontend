@@ -4,6 +4,7 @@ import { signXdr, decodeU64, type Listing } from "@kitcrate/sdk";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { requireRentalEscrowClient } from "@/lib/contract";
+import { contractErrorMessage } from "@/lib/contract-errors";
 import { formatCurrency } from "@/lib/format";
 import { DEFAULT_CLAIM_WINDOW_SECS, toBaseUnits } from "@/lib/token";
 import { useWallet } from "@/lib/wallet-context";
@@ -98,7 +99,12 @@ export function BookingPanel({ listing }: { listing: Listing }) {
       }
     } catch (err) {
       setStep("error");
-      setError(err instanceof Error ? err.message : "Could not create the booking.");
+      setError(
+        contractErrorMessage(
+          err,
+          "The booking could not be completed. Try again, or check the item's current status.",
+        ),
+      );
     }
   }
 
