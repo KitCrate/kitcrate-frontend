@@ -134,7 +134,8 @@ export class RentalEscrowClient {
     const transaction = TransactionBuilder.fromXDR(signedTxXdr, this.networkPassphrase);
     const sendResult = await this.server.sendTransaction(transaction);
 
-    if (sendResult.status === "ERROR") {
+   if (sendResult.status === "ERROR") {
+      console.error("RentalEscrow sendTransaction rejected, full result:", sendResult);
       throw new RentalEscrowTransactionRejectedError(sendResult.status);
     }
 
