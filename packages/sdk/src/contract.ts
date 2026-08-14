@@ -1,4 +1,10 @@
-import { BASE_FEE, Contract, TransactionBuilder, rpc, xdr } from "@stellar/stellar-sdk";
+import { BASE_FEE, Contract, StrKey, TransactionBuilder, rpc, xdr } from "@stellar/stellar-sdk";
+import {
+  AccountSignatureRequirement,
+  TransactionAuthError,
+  requirementFromAccountEntry,
+  transactionResultCode,
+} from "./txResult";
 import {
   addressToScVal,
   i128ToScVal,
@@ -11,6 +17,13 @@ export interface RentalEscrowConfig {
   rpcUrl: string;
   networkPassphrase: string;
 }
+
+export {
+  TransactionAuthError,
+  requirementFromAccountEntry,
+  transactionResultCode,
+} from "./txResult";
+export type { AccountSignatureRequirement } from "./txResult";
 
 export interface CreateAgreementParams {
   owner: string;
@@ -136,9 +149,55 @@ export class RentalEscrowClient {
 
    if (sendResult.status === "ERROR") {
       console.error("RentalEscrow sendTransaction rejected, full result:", sendResult);
+      const resultCode = sendResult.errorResult
+        ? transactionResultCode(sendResult.errorResult)
+        : null;
+      if (resultCode === "txBadAuth") {
+        // The most common cause: the signing account is a multisig whose medium
+        // threshold exceeds the single connected key's signature weight. The
+        // transaction itself was built and signed correctly; the account just
+        // needs more signature weight than the wallet provides.
+        throw new TransactionAuthError(resultCode);
+      }
       throw new RentalEscrowTransactionRejectedError(sendResult.status);
     }
 
     return this.server.pollTransaction(sendResult.hash);
+  }
+
+  /**
+   * Reads the signing account's auth configuration to predict whether a single
+   * wallet signature can authorize a Soroban invocation from it. A Soroban
+   * invocation from an account requires total signature weight meeting the
+   * account's MEDIUM threshold; when the connected key's weight falls short,
+   * the network rejects the perfectly-built, perfectly-signed transaction with
+   * txBadAuth. Returning this before prompting the wallet lets the UI explain
+   * the multisig requirement instead of failing after a signature prompt.
+   *
+   * Returns null when the requirement cannot be determined (transient RPC
+   * failure, account has no ledger entry); callers should treat null as
+   * "assume the single signature is fine" and proceed.
+   */
+  async getAccountSignatureRequirement(
+    address: string,
+  ): Promise<AccountSignatureRequirement | null> {
+    try {
+      const publicKey = xdr.PublicKey.publicKeyTypeEd25519(
+        StrKey.decodeEd25519PublicKey(address),
+      );
+      const key = xdr.LedgerKey.account(
+        new xdr.LedgerKeyAccount({ accountId: publicKey }),
+      );
+      const result = await this.server.getLedgerEntries(key);
+      const entry = result.entries?.[0];
+      if (!entry) {
+        // Fresh account with no ledger entry: defaults are threshold 0 and a
+        // master weight of 1, so a single signature always suffices.
+        return { mediumThreshold: 0, signerWeight: 1 };
+      }
+      return requirementFromAccountEntry(address, entry.val.account());
+    } catch {
+      return null;
+    }
   }
 }

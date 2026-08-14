@@ -23,6 +23,24 @@ function useAgreementAction(
     if (!account) return;
     setError(null);
     try {
+      // A Soroban invocation from an account needs signature weight meeting the
+      // account's medium threshold. When the connected wallet's key can't meet
+      // it (the account is a multisig), the network rejects the perfectly built
+      // and signed transaction with txBadAuth. Catch that here so the user sees
+      // why before they're prompted to sign a doomed transaction.
+      const client = requireRentalEscrowClient();
+      const requirement = await client.getAccountSignatureRequirement(account.address);
+      if (requirement && requirement.signerWeight < requirement.mediumThreshold) {
+        setError(
+          `Your wallet can't authorize this by itself: this account is a multisig with ` +
+            `a signature threshold of ${requirement.mediumThreshold}, but your connected key ` +
+            `only carries weight ${requirement.signerWeight}. Sign with the account's other ` +
+            `signers, or lower the account's medium threshold.`,
+        );
+        setStep("error");
+        return;
+      }
+
       setStep("signing");
       const unsignedXdr = await run(account.address, BigInt(agreementId));
       const signedXdr = await signXdr(unsignedXdr, {
@@ -31,7 +49,6 @@ function useAgreementAction(
       });
 
       setStep("submitting");
-      const client = requireRentalEscrowClient();
       const result = await client.submit(signedXdr);
 
       if (result.status !== "SUCCESS") {

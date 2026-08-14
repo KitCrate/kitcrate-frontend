@@ -35,7 +35,8 @@ Reads and writes take deliberately different paths.
 |---|---|
 | `wallet.ts` | Freighter connection, account access, and transaction signing, built on `@stellar/freighter-api`. |
 | `xdr.ts` | Argument encoding and decoding helpers. The single path for building contract-call arguments. |
-| `contract.ts` | The typed RentalEscrow client: create, fund, start, raise claim, release, cancel, and transaction submission. |
+| `contract.ts` | The typed RentalEscrow client: create, fund, start, raise claim, release, cancel, transaction submission, and pre-flight account signature checks. |
+| `txResult.ts` | Pure helpers for decoding `sendTransaction` result codes (e.g. `txBadAuth`) and account signature-weight/threshold requirements, unit-tested with Node's built-in test runner. |
 | `indexerClient.ts` | The typed client for the backend REST API, covering agreements and listings. |
 
 ## Project structure
