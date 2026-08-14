@@ -319,7 +319,7 @@ export function ReleaseFundsButton({ agreement }: { agreement: Agreement }) {
 export function CancelAgreementButton({ agreement }: { agreement: Agreement }) {
   const { account } = useWallet();
   const isParty = account?.address === agreement.owner || account?.address === agreement.renter;
-  const isEligible = (agreement.status === "Created" || agreement.status === "Funded") && isParty;
+  const isEligible = agreement.status === "Created" && isParty;
 
   const { step, setStep, error, confirm } = useAgreementAction(
     agreement.id,
