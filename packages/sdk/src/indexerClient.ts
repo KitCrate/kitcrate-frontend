@@ -144,6 +144,30 @@ export class IndexerClient {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
   }
 
+  /**
+   * The indexer always answers JSON, so an HTML response means the request
+   * never reached it: the base URL is wrong or points at a server that
+   * serves pages (e.g. the frontend itself), or the indexer is down and a
+   * proxy/dev server answered instead. Surface that as one clear message
+   * rather than leaking raw HTML into error text.
+   */
+  private unreachableError(status: number, path: string): IndexerApiError {
+    return new IndexerApiError(
+      "Could not reach the indexer service. Check that it's running and NEXT_PUBLIC_INDEXER_API_URL is set correctly.",
+      status,
+      path,
+    );
+  }
+
+  private isHtmlBody(body: string): boolean {
+    const trimmed = body.trimStart();
+    return (
+      trimmed.startsWith("<!doctype html") ||
+      trimmed.startsWith("<html") ||
+      /<title[^>]*>/i.test(trimmed)
+    );
+  }
+
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       ...init,
@@ -154,8 +178,15 @@ export class IndexerClient {
       },
     });
 
+    if ((response.headers.get("content-type") ?? "").includes("text/html")) {
+      throw this.unreachableError(response.status, path);
+    }
+
     if (!response.ok) {
       const body = await response.text().catch(() => "");
+      if (this.isHtmlBody(body)) {
+        throw this.unreachableError(response.status, path);
+      }
       throw new IndexerApiError(
         body || `Indexer API request failed with status ${response.status}.`,
         response.status,
