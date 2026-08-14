@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { requireRentalEscrowClient } from "@/lib/contract";
 import { contractErrorMessage } from "@/lib/contract-errors";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatRawTokenAmount } from "@/lib/format";
 import { toBaseUnits } from "@/lib/token";
 import { useWallet } from "@/lib/wallet-context";
 
@@ -37,7 +37,7 @@ export function ClaimForm({ agreement }: { agreement: Agreement }) {
       return;
     }
     if (amount > Number(agreement.depositAmount)) {
-      setError(`The claim cannot exceed the deposit of ${formatCurrency(agreement.depositAmount)}.`);
+      setError(`The claim cannot exceed the deposit of ${formatRawTokenAmount(agreement.depositAmount)}.`);
       return;
     }
     if (!evidenceRef.trim()) {
@@ -150,7 +150,7 @@ export function ClaimForm({ agreement }: { agreement: Agreement }) {
             </div>
             <div>
               <dt className="text-charcoal/60">Deposit held</dt>
-              <dd className="font-mono text-deposit-green">{formatCurrency(agreement.depositAmount)}</dd>
+              <dd className="font-mono text-deposit-green">{formatRawTokenAmount(agreement.depositAmount)}</dd>
             </div>
             <div className="col-span-2">
               <dt className="text-charcoal/60">Evidence</dt>

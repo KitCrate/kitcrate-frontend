@@ -78,7 +78,8 @@ cp apps/web/.env.example apps/web/.env.local
 npm run dev
 ```
 
-The app runs at `http://localhost:3000`.
+The app runs at `http://localhost:3001` (the web dev server is pinned to port 3001 so it
+doesn't collide with the kitcrate-backend indexer, which serves its REST API on port 3000).
 
 ## Environment variables
 

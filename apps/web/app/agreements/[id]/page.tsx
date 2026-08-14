@@ -8,7 +8,7 @@ import {
 } from "@/components/AgreementActions";
 import { AgreementStatusTag } from "@/components/AgreementStatusTag";
 import { ClaimForm } from "@/components/ClaimForm";
-import { formatCurrency, formatDate, truncateMiddle } from "@/lib/format";
+import { formatRawTokenAmount, formatDate, truncateMiddle } from "@/lib/format";
 import { indexerClient } from "@/lib/indexer";
 
 async function getAgreement(id: string): Promise<Agreement | null> {
@@ -70,11 +70,11 @@ export default async function AgreementDetailPage({
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <div>
               <dt className="text-charcoal/60">Rental</dt>
-              <dd className="font-mono text-charcoal">{formatCurrency(agreement.rentalAmount)}</dd>
+              <dd className="font-mono text-charcoal">{formatRawTokenAmount(agreement.rentalAmount)}</dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Deposit</dt>
-              <dd className="font-mono text-deposit-green">{formatCurrency(agreement.depositAmount)}</dd>
+              <dd className="font-mono text-deposit-green">{formatRawTokenAmount(agreement.depositAmount)}</dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Starts</dt>
