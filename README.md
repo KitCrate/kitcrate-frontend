@@ -1,129 +1,71 @@
 # KitCrate
 
-A peer-to-peer marketplace for renting physical equipment: tools, cameras, construction
-gear, and event equipment. Renters and owners agree on a rental period and a security
-deposit, held in a non-custodial Soroban smart contract. This repository is the web
-application. It covers listings, the booking flow, agreement tracking, and claim handling.
+**Peer-to-peer equipment rental, secured by a non-custodial Soroban escrow.**
+
+![Network: Testnet](https://img.shields.io/badge/network-testnet-3d5afe)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
+No CI is configured for this repository yet (no `.github/workflows/`), so there is no build-status badge.
+
+## What this is
+
+This repository is the web application and integration layer for KitCrate, a peer-to-peer marketplace for renting physical equipment: tools, cameras, construction gear, and event equipment. It's an npm workspaces monorepo with two packages: `apps/web`, the Next.js app renters and owners actually use, and `packages/sdk`, the typed client that talks to the `RentalEscrow` Soroban contract and the [kitcrate-backend](https://github.com/KitCrate/kitcrate-backend) indexer API on its behalf. Components never call the chain or the backend directly — they go through the SDK.
+
+## Links
+
+- **Live app:** [kitcrate-frontend-web.vercel.app](https://kitcrate-frontend-web.vercel.app)
+- **Docs:** [kitcrate.github.io/kitcrate-backend](https://kitcrate.github.io/kitcrate-backend/)
+- **Backend repo:** [github.com/KitCrate/kitcrate-backend](https://github.com/KitCrate/kitcrate-backend)
+
+## Maintainer
+
+GitHub: [@Hollujay](https://github.com/Hollujay)
+Telegram: [@Hollujay21](https://t.me/Hollujay21)
 
 ## Architecture
 
-KitCrate is an npm workspaces monorepo with two packages.
+Two packages, connected only through the SDK:
 
-- **`packages/sdk`** (`@kitcrate/sdk`) is the typed integration layer. It owns wallet
-  connection, XDR encoding, the RentalEscrow contract client, and the indexer API client.
-  Components never talk to the chain or the backend directly. They call the SDK.
-- **`apps/web`** (`@kitcrate/web`) is the Next.js App Router application. Pages and
-  components consume the SDK and render the interface.
+- **`packages/sdk`** (`@kitcrate/sdk`): wallet connection (Freighter), XDR encoding, a typed `RentalEscrowClient` for building and submitting contract calls, and a typed `IndexerClient` for the backend's REST API.
+- **`apps/web`** (`@kitcrate/web`): the Next.js App Router app. Writes (create, fund, start, claim, release, cancel) go through the connected wallet via the SDK; reads go through the backend indexer API rather than direct contract calls.
 
-### How data flows
+For the full SDK API (every `RentalEscrowClient` and `IndexerClient` method, a worked build-sign-submit example) see the [Developer Guide](https://kitcrate.github.io/kitcrate-backend/developer-guide.html) on the docs site, rather than duplicating it here.
 
-Reads and writes take deliberately different paths.
+## Quick start
 
-- **Writes** (create, fund, start, claim, release, cancel) go through the connected
-  wallet. The SDK builds the transaction, Freighter signs it, and the SDK submits it to
-  Soroban RPC and polls for confirmation. Every write is gated behind an explicit
-  confirmation step in the interface. No transaction is submitted without one.
-- **Reads** go through the backend indexer API rather than direct contract calls. The
-  indexer already maintains queryable agreement and listing state, so the app fetches from
-  the REST endpoints (`GET /agreements`, `GET /agreements/:id`,
-  `GET /agreements/:id/events`, and the listings routes) instead of reading contract
-  storage. Direct RPC reads are a fallback only for state the indexer does not yet expose.
+Prerequisites: Node.js >= 20, npm >= 9 (for workspaces), the [Freighter](https://www.freighter.app/) browser extension for anything that signs a transaction.
 
-### SDK modules
-
-| Module | Responsibility |
-|---|---|
-| `wallet.ts` | Freighter connection, account access, and transaction signing, built on `@stellar/freighter-api`. |
-| `xdr.ts` | Argument encoding and decoding helpers. The single path for building contract-call arguments. |
-| `contract.ts` | The typed RentalEscrow client: create, fund, start, raise claim, release, cancel, transaction submission, and pre-flight account signature checks. |
-| `txResult.ts` | Pure helpers for decoding `sendTransaction` result codes (e.g. `txBadAuth`) and account signature-weight/threshold requirements, unit-tested with Node's built-in test runner. |
-| `indexerClient.ts` | The typed client for the backend REST API, covering agreements and listings. |
-
-## Project structure
-
-```
-kitcrate-frontend/
-├── packages/
-│   └── sdk/                       # @kitcrate/sdk, the integration layer
-│       └── src/
-│           ├── wallet.ts          # Freighter wallet integration
-│           ├── xdr.ts             # argument encoding/decoding helpers
-│           ├── contract.ts        # typed RentalEscrow client
-│           ├── indexerClient.ts   # typed backend REST client
-│           └── index.ts           # package entry point
-├── apps/
-│   └── web/                       # @kitcrate/web, the Next.js app
-│       ├── app/                   # App Router pages and layout
-│       ├── components/            # CheckoutTag and everything built on it
-│       └── styles/tokens.css      # design tokens as CSS custom properties
-├── package.json                   # workspace root
-└── README.md
-```
-
-## Requirements
-
-- Node.js 20 or newer.
-- npm 9 or newer, for workspaces support.
-- The Freighter browser extension, for any action that signs a transaction.
-
-## Setup
-
-```bash
-# 1. Install all workspace dependencies from the repo root.
-npm install
-
-# 2. Create a local environment file for the web app and fill in the values.
-cp apps/web/.env.example apps/web/.env.local
-
-# 3. Start the development server.
+```sh
+npm install                                  # installs every workspace
+cp apps/web/.env.example apps/web/.env.local # then fill in the values
 npm run dev
 ```
 
-The app runs at `http://localhost:3001` (the web dev server is pinned to port 3001 so it
-doesn't collide with the kitcrate-backend indexer, which serves its REST API on port 3000).
+The app runs at `http://localhost:3001` (pinned off 3000 so it doesn't collide with the kitcrate-backend indexer's default port).
 
-## Environment variables
+Real variables from `apps/web/.env.example`: `NEXT_PUBLIC_CONTRACT_ID`, `NEXT_PUBLIC_TOKEN_CONTRACT_ID`, `NEXT_PUBLIC_SOROBAN_RPC_URL`, `NEXT_PUBLIC_NETWORK_PASSPHRASE`, `NEXT_PUBLIC_INDEXER_API_URL`.
 
-All are read by the web app and must be prefixed with `NEXT_PUBLIC_`, since the client
-uses them. Set them in `apps/web/.env.local`.
+**Type-check:**
 
-| Variable | Description | When it is set |
-|---|---|---|
-| `NEXT_PUBLIC_CONTRACT_ID` | Deployed RentalEscrow contract address. | After the contract is deployed. |
-| `NEXT_PUBLIC_TOKEN_CONTRACT_ID` | SEP-41 token contract address, for example a USDC SAC. | After the contract is deployed. |
-| `NEXT_PUBLIC_SOROBAN_RPC_URL` | Soroban RPC endpoint. | At setup. Depends on the network. |
-| `NEXT_PUBLIC_NETWORK_PASSPHRASE` | Stellar network passphrase. | At setup. Depends on the network. |
-| `NEXT_PUBLIC_INDEXER_API_URL` | Base URL for the kitcrate-backend indexer API. | After the backend is deployed. |
+```sh
+npm run typecheck
+```
 
-Without the contract and network values, contract writes are disabled and the interface
-tells the user the contract is not configured. Without the indexer URL, listing and
-agreement reads return empty.
+Tested against this repo: passes cleanly across both workspaces.
 
-## Scripts
+**SDK tests:** `npm test --workspace=@kitcrate/sdk` is currently broken — see [Known limitations](#known-limitations).
 
-Run these from the repository root.
+## Contributing
 
-| Command | What it does |
-|---|---|
-| `npm run dev` | Start the web app in development mode. |
-| `npm run build` | Build the web app for production. |
-| `npm run lint` | Lint the web workspace with ESLint. |
-| `npm run typecheck` | Type-check every workspace with `tsc`. |
+See [CONTRIBUTING.md](./CONTRIBUTING.md): this project isn't currently accepting outside contributions.
 
-## Design
+## Known limitations
 
-The interface is built around one signature component, the **checkout tag**: a card styled
-like a physical toolshed work-order chit, with a punched-hole detail and a
-serial-number-style ID in a monospace face. Every listing card, agreement, and status
-indicator is a variation of that one tag rather than a separate design system per section.
-The agreement lifecycle (Created, Funded, Active, Disputed, Resolved, Completed,
-Cancelled) reads like a tag being stamped at each stage, not a generic progress bar. Design
-tokens live in `apps/web/styles/tokens.css` and drive the Tailwind theme. Forms, tables,
-and settings stay quiet and disciplined so the tag carries the visual weight.
+- **SDK test script is broken.** `packages/sdk/package.json`'s `test` script runs `node --experimental-strip-types --test test/*.test.ts`. Node 20 doesn't have that flag at all; current Node 22 (22.23.2, tested here) has already dropped it too, since type-stripping is now unflagged by default — only `--no-experimental-strip-types` (to disable it) remains. The 7 tests in `packages/sdk/test/` do pass; confirmed by running `node --test test/*.test.ts` directly on Node 22. Only the script itself needs fixing, tracked as separate follow-up work.
+- **Node version.** Root `package.json` states `"node": ">=20"`, but `@stellar/stellar-sdk@16.2.0` (a direct SDK dependency) requires Node >=22 and warns on install otherwise. `npm install` still succeeds on Node 20, but Node 22+ is the version this repo actually needs.
+- **Multisig accounts need enough signature weight.** A Soroban invocation from an account requires total signer weight meeting that account's medium threshold. A single Freighter-connected key on a multisig account can fall short of it, in which case the network rejects an otherwise correctly built and signed transaction with `txBadAuth`. The SDK detects this ahead of signing (`getAccountSignatureRequirement`) and the UI surfaces a clear message instead.
+- **Vercel hosting.** Unlike the backend's Render free tier, Vercel's free (Hobby) tier doesn't sleep the app between requests, so there's no equivalent cold-start delay to document here.
 
-## Tech stack
+## License
 
-Next.js (App Router) and TypeScript throughout, with strict type-checking. Tailwind for
-styling, themed from the design tokens rather than the default palette. Freighter for
-wallet connection, through `@stellar/freighter-api`. Stellar Soroban for the on-chain
-escrow.
+[MIT](./LICENSE).
