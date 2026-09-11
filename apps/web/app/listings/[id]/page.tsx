@@ -25,9 +25,22 @@ export default async function ListingDetailPage({
   if (!listing) notFound();
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
-      <div className="flex flex-col gap-6">
-        {listing.imageUrls[0] ? (
+    <div className="flex flex-col gap-6">
+      {listing.currentlyBooked ? (
+        <div className="rounded-md border border-amber bg-amber/15 px-5 py-4">
+          <p className="font-display text-lg tracking-wide text-charcoal">
+            Currently booked
+          </p>
+          <p className="mt-1 text-sm text-charcoal/80">
+            This item has an active rental agreement against it, so it isn&apos;t available to
+            book right now. It will return to &ldquo;Available now&rdquo; once that rental is
+            completed or cancelled.
+          </p>
+        </div>
+      ) : null}
+      <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
+        <div className="flex flex-col gap-6">
+          {listing.imageUrls[0] ? (
           // eslint-disable-next-line @next/next/no-img-element -- remote photo domain is backend-defined, not allowlisted
           <img
             src={listing.imageUrls[0]}
@@ -58,8 +71,19 @@ export default async function ListingDetailPage({
             </dl>
           </div>
         </CheckoutTag>
+        </div>
+        {listing.currentlyBooked ? (
+          <div className="flex flex-col gap-4 rounded-md border border-rivet bg-paper p-5">
+            <h2 className="font-display text-xl tracking-wide text-charcoal">Book this item</h2>
+            <p className="text-sm text-charcoal/80">
+              This item is currently booked and can&apos;t be reserved right now. Check back once
+              it&apos;s available again, or view your existing agreements if this is your rental.
+            </p>
+          </div>
+        ) : (
+          <BookingPanel listing={listing} />
+        )}
       </div>
-      <BookingPanel listing={listing} />
     </div>
   );
 }

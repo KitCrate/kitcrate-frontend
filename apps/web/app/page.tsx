@@ -7,7 +7,12 @@ import type { Listing } from "@kitcrate/sdk";
 async function getListings(): Promise<Listing[]> {
   if (!indexerClient) return [];
   try {
-    return await indexerClient.listListings();
+    const listings = await indexerClient.listListings();
+    // "Available now" promises items that are actually free to rent, so drop
+    // any listing with a committed agreement against it (Funded/Active/
+    // Disputed/Resolved). It reappears here once that agreement is Cancelled
+    // or Completed. The item's own detail page stays reachable regardless.
+    return listings.filter((listing) => !listing.currentlyBooked);
   } catch (error) {
     console.error("Failed to load listings from the indexer API.", error);
     return [];

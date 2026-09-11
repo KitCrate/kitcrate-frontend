@@ -91,6 +91,15 @@ export interface Listing {
   depositAmount: string;
   imageUrls: string[];
   location: string;
+  /**
+   * True when an agreement in an "occupied" state (Funded, Active, Disputed,
+   * or Resolved) currently exists against this listing, i.e. money has moved
+   * and the item is committed. Computed server-side by the indexer; the item
+   * frees up again (back to false) once that agreement is Cancelled or
+   * Completed. Used to hide committed items from the "Available now" browse
+   * list while keeping the detail page reachable.
+   */
+  currentlyBooked: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -99,7 +108,8 @@ export interface Listing {
  * Raw listing row as served by kitcrate-backend's /listings endpoints
  * (snake_case columns from the `listings` table). daily_rate and deposit are
  * NUMERIC and arrive as strings over JSON; photo_urls may be absent on rows
- * predating the column default. There is no category column.
+ * predating the column default. There is no category column. `currently_booked`
+ * is a computed boolean the backend adds to each row (not a stored column).
  */
 interface ListingRow {
   id: string;
@@ -110,11 +120,17 @@ interface ListingRow {
   location: string;
   daily_rate: string | number;
   deposit: string | number;
+  currently_booked?: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export type CreateListingInput = Omit<Listing, "id" | "createdAt" | "updatedAt">;
+// `currentlyBooked` is a read-only field the backend computes; it is never
+// part of a create/update payload.
+export type CreateListingInput = Omit<
+  Listing,
+  "id" | "currentlyBooked" | "createdAt" | "updatedAt"
+>;
 export type UpdateListingInput = Partial<CreateListingInput>;
 
 export interface ListingFilters {
@@ -230,6 +246,7 @@ export class IndexerClient {
       depositAmount: String(row.deposit),
       imageUrls: row.photo_urls ?? [],
       location: row.location,
+      currentlyBooked: row.currently_booked ?? false,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
