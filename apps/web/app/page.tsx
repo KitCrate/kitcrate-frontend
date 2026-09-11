@@ -4,6 +4,11 @@ import { ListingCard } from "@/components/ListingCard";
 import { indexerClient } from "@/lib/indexer";
 import type { Listing } from "@kitcrate/sdk";
 
+// Revalidate the statically-rendered homepage at most once per minute so newly
+// created (or newly booked/freed) listings surface without a manual redeploy,
+// while still serving a cached page for most requests.
+export const revalidate = 60;
+
 async function getListings(): Promise<Listing[]> {
   if (!indexerClient) return [];
   try {
