@@ -53,7 +53,11 @@ npm run typecheck
 
 Tested against this repo: passes cleanly across both workspaces.
 
-**SDK tests:** `npm test --workspace=@kitcrate/sdk` is currently broken — see [Known limitations](#known-limitations).
+**Run the SDK tests:**
+
+```sh
+npm test --workspace=@kitcrate/sdk
+```
 
 ## Contributing
 
@@ -61,7 +65,6 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md): this project isn't currently accepting
 
 ## Known limitations
 
-- **SDK test script is broken.** `packages/sdk/package.json`'s `test` script runs `node --experimental-strip-types --test test/*.test.ts`. Node 20 doesn't have that flag at all; current Node 22 (22.23.2, tested here) has already dropped it too, since type-stripping is now unflagged by default — only `--no-experimental-strip-types` (to disable it) remains. The 7 tests in `packages/sdk/test/` do pass; confirmed by running `node --test test/*.test.ts` directly on Node 22. Only the script itself needs fixing, tracked as separate follow-up work.
 - **Node version.** Root `package.json` states `"node": ">=20"`, but `@stellar/stellar-sdk@16.2.0` (a direct SDK dependency) requires Node >=22 and warns on install otherwise. `npm install` still succeeds on Node 20, but Node 22+ is the version this repo actually needs.
 - **Multisig accounts need enough signature weight.** A Soroban invocation from an account requires total signer weight meeting that account's medium threshold. A single Freighter-connected key on a multisig account can fall short of it, in which case the network rejects an otherwise correctly built and signed transaction with `txBadAuth`. The SDK detects this ahead of signing (`getAccountSignatureRequirement`) and the UI surfaces a clear message instead.
 - **Vercel hosting.** Unlike the backend's Render free tier, Vercel's free (Hobby) tier doesn't sleep the app between requests, so there's no equivalent cold-start delay to document here.
