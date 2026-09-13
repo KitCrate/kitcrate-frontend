@@ -37,9 +37,16 @@ export interface CreateAgreementParams {
 }
 
 export class RentalEscrowTransactionRejectedError extends Error {
-  constructor(public readonly status: string) {
+  // Explicit field + assignment, not a TS constructor parameter property:
+  // see the identical note on IndexerApiError in indexerClient.ts — Node's
+  // native strip-only TypeScript execution (this package's `node --test`)
+  // cannot transform that shorthand.
+  readonly status: string;
+
+  constructor(status: string) {
     super(`RentalEscrow transaction was rejected before submission: ${status}`);
     this.name = "RentalEscrowTransactionRejectedError";
+    this.status = status;
   }
 }
 

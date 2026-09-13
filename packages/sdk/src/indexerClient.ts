@@ -133,19 +133,55 @@ export type CreateListingInput = Omit<
 >;
 export type UpdateListingInput = Partial<CreateListingInput>;
 
+/**
+ * The three listing-mutation actions the indexer's SEP-53 challenge
+ * system recognizes (kitcrate-backend's auth/message.ts). Each challenge
+ * is single-use and bound to exactly one of these plus a specific
+ * listing id, so it can never be replayed against a different mutation.
+ */
+export type ListingAuthAction = "create_listing" | "update_listing" | "delete_listing";
+
+/**
+ * A one-shot SEP-53 challenge issued by POST /auth/challenge, ready to be
+ * signed by the wallet that controls the claimed address.
+ */
+export interface ListingChallenge {
+  nonce: string;
+  message: string;
+  expiresAt: string;
+}
+
+/**
+ * Proves control of `address` for exactly one listing mutation. `sign` is
+ * injected by the caller (see wallet.ts's signMessage, wrapping
+ * Freighter's SEP-53 support) rather than hardcoded here, mirroring how
+ * RentalEscrowClient never signs transactions itself (see contract.ts) —
+ * IndexerClient builds and transmits, the caller's wallet signs.
+ */
+export interface ListingSigner {
+  address: string;
+  sign: (message: string) => Promise<string>;
+}
+
 export interface ListingFilters {
   ownerAddress?: string;
   category?: string;
 }
 
 export class IndexerApiError extends Error {
-  constructor(
-    message: string,
-    public readonly status: number,
-    public readonly path: string,
-  ) {
+  // Explicit fields + assignment, not TS constructor parameter properties:
+  // Node's native (strip-only) TypeScript execution — used by this
+  // package's `node --test test/*.test.ts` — cannot transform parameter
+  // properties, only erase type annotations, so that shorthand fails at
+  // module load with ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX under that runner.
+  readonly status: number;
+  readonly path: string;
+
+  constructor(message: string, status: number, path: string) {
     super(message);
     this.name = "IndexerApiError";
+    this.status = status;
+    this.path = path;
   }
 }
 
@@ -335,9 +371,46 @@ export class IndexerClient {
     return this.mapListing(row);
   }
 
-  async createListing(input: CreateListingInput): Promise<Listing> {
+  /**
+   * Requests a one-shot SEP-53 challenge for `signer.address` to perform
+   * `action` on `listingId`. Exposed directly (not only as a private
+   * helper) so a caller that wants to prompt the wallet ahead of time —
+   * for example to show a distinct "confirm in your wallet" UI state
+   * before the network request that consumes it — can do so.
+   */
+  async requestListingChallenge(
+    signer: Pick<ListingSigner, "address">,
+    action: ListingAuthAction,
+    listingId: string,
+  ): Promise<ListingChallenge> {
+    return this.request<ListingChallenge>("/auth/challenge", {
+      method: "POST",
+      body: JSON.stringify({ address: signer.address, action, listingId }),
+    });
+  }
+
+  /** Requests a challenge, has the signer sign it, and returns the three
+   * headers the listings routes require. A fresh challenge is requested
+   * for every call — challenges are single-use, so headers built here can
+   * never be reused for a second request. */
+  private async listingAuthHeaders(
+    signer: ListingSigner,
+    action: ListingAuthAction,
+    listingId: string,
+  ): Promise<Record<string, string>> {
+    const challenge = await this.requestListingChallenge(signer, action, listingId);
+    const signature = await signer.sign(challenge.message);
+    return {
+      "X-Kitcrate-Address": signer.address,
+      "X-Kitcrate-Nonce": challenge.nonce,
+      "X-Kitcrate-Signature": signature,
+    };
+  }
+
+  async createListing(input: CreateListingInput, signer: ListingSigner): Promise<Listing> {
+    const id = crypto.randomUUID();
     const payload = {
-      id: crypto.randomUUID(),
+      id,
       owner: input.ownerAddress,
       title: input.title,
       description: input.description,
@@ -346,13 +419,20 @@ export class IndexerClient {
       daily_rate: Number(input.dailyRentalAmount),
       deposit: Number(input.depositAmount),
     };
-    return this.request<Listing>("/listings", {
+    const headers = await this.listingAuthHeaders(signer, "create_listing", id);
+    const row = await this.request<ListingRow>("/listings", {
       method: "POST",
+      headers,
       body: JSON.stringify(payload),
     });
+    return this.mapListing(row);
   }
 
-  async updateListing(id: string, input: UpdateListingInput): Promise<Listing> {
+  async updateListing(
+    id: string,
+    input: UpdateListingInput,
+    signer: ListingSigner,
+  ): Promise<Listing> {
     // The backend exposes PUT /listings/:id (a full replace), not PATCH, and
     // it reads the same snake_case columns with numeric daily_rate/deposit as
     // the POST route. So the outbound body needs the same field-name
@@ -369,14 +449,17 @@ export class IndexerClient {
       payload.daily_rate = Number(input.dailyRentalAmount);
     if (input.depositAmount !== undefined) payload.deposit = Number(input.depositAmount);
     // category is intentionally not sent: the backend has no category column.
+    const headers = await this.listingAuthHeaders(signer, "update_listing", id);
     const row = await this.request<ListingRow>(`/listings/${id}`, {
       method: "PUT",
+      headers,
       body: JSON.stringify(payload),
     });
     return this.mapListing(row);
   }
 
-  async deleteListing(id: string): Promise<void> {
-    await this.request<void>(`/listings/${id}`, { method: "DELETE" });
+  async deleteListing(id: string, signer: ListingSigner): Promise<void> {
+    const headers = await this.listingAuthHeaders(signer, "delete_listing", id);
+    await this.request<void>(`/listings/${id}`, { method: "DELETE", headers });
   }
 }

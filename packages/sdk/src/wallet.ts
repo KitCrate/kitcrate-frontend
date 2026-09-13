@@ -1,9 +1,12 @@
+import { Buffer } from "buffer";
+
 import {
   getAddress,
   getNetworkDetails,
   isConnected,
   requestAccess,
   setAllowed,
+  signMessage as freighterSignMessage,
   signTransaction,
   WatchWalletChanges,
 } from "@stellar/freighter-api";
@@ -94,6 +97,36 @@ export async function signXdr(
     throw new WalletConnectionError(result.error.message);
   }
   return result.signedTxXdr;
+}
+
+/**
+ * Asks Freighter to sign an arbitrary text message per SEP-53 ("Sign
+ * Message" — https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0053.md),
+ * the same standard used by the indexer's listing-authentication
+ * challenges (see @kitcrate/sdk's IndexerClient create/update/deleteListing).
+ * Unlike signXdr, this never touches the chain and can never move funds —
+ * it only proves the connected wallet controls `opts.address`.
+ *
+ * Returns the signature base64-encoded, matching the encoding the
+ * indexer expects in the X-Kitcrate-Signature header. Freighter's API
+ * returns either a Buffer (older extension versions) or an
+ * already-base64 string (newer versions); both are normalized here so
+ * callers never need to know which.
+ */
+export async function signMessage(
+  message: string,
+  opts: SignXdrOptions,
+): Promise<string> {
+  const result = await freighterSignMessage(message, opts);
+  if (result.error) {
+    throw new WalletConnectionError(result.error.message);
+  }
+  if (result.signedMessage === null) {
+    throw new WalletConnectionError("Freighter did not return a signed message.");
+  }
+  return typeof result.signedMessage === "string"
+    ? result.signedMessage
+    : Buffer.from(result.signedMessage).toString("base64");
 }
 
 export type WalletChangeListener = (account: WalletAccount | null) => void;

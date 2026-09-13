@@ -4,6 +4,7 @@ import { IndexerApiError } from "@kitcrate/sdk";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { indexerClient } from "@/lib/indexer";
+import { createListingSigner } from "@/lib/listingSigner";
 import { useWallet } from "@/lib/wallet-context";
 
 const CATEGORIES = [
@@ -47,16 +48,19 @@ export default function NewListingPage() {
 
     setSubmitting(true);
     try {
-      const listing = await indexerClient.createListing({
-        ownerAddress: account.address,
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        dailyRentalAmount: Number(dailyRentalAmount).toFixed(2),
-        depositAmount: Number(depositAmount).toFixed(2),
-        location: location.trim(),
-        imageUrls: imageUrl.trim() ? [imageUrl.trim()] : [],
-      });
+      const listing = await indexerClient.createListing(
+        {
+          ownerAddress: account.address,
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          dailyRentalAmount: Number(dailyRentalAmount).toFixed(2),
+          depositAmount: Number(depositAmount).toFixed(2),
+          location: location.trim(),
+          imageUrls: imageUrl.trim() ? [imageUrl.trim()] : [],
+        },
+        createListingSigner(account),
+      );
       router.push(`/listings/${listing.id}`);
     } catch (err) {
       if (err instanceof IndexerApiError) {
