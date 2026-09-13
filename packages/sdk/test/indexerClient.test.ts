@@ -107,7 +107,6 @@ test("createListing requests a create_listing challenge, signs it, then POSTs wi
       ownerAddress: OWNER,
       title: "Drill",
       description: "",
-      category: "Other",
       dailyRentalAmount: "10.00",
       depositAmount: "20.00",
       imageUrls: [],

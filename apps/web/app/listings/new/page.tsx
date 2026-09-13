@@ -2,74 +2,42 @@
 
 import { IndexerApiError } from "@kitcrate/sdk";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { ListingForm, type ListingFormValues } from "@/components/ListingForm";
 import { indexerClient } from "@/lib/indexer";
 import { createListingSigner } from "@/lib/listingSigner";
 import { useWallet } from "@/lib/wallet-context";
-
-const CATEGORIES = [
-  "Power Tools",
-  "Hand Tools",
-  "Camera / Video",
-  "Audio",
-  "Construction",
-  "Event Equipment",
-  "Outdoor",
-  "Other",
-];
 
 export default function NewListingPage() {
   const router = useRouter();
   const { account, status: walletStatus, connect } = useWallet();
 
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<string>(CATEGORIES[0] ?? "Other");
-  const [description, setDescription] = useState("");
-  const [dailyRentalAmount, setDailyRentalAmount] = useState("");
-  const [depositAmount, setDepositAmount] = useState("");
-  const [location, setLocation] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    setError(null);
-
+  async function handleSubmit(values: ListingFormValues) {
     if (!account) {
       await connect();
       return;
     }
-
     if (!indexerClient) {
-      setError("Listings are not available yet. The indexer service has not been configured.");
-      return;
+      throw new Error("Listings are not available yet. The indexer service has not been configured.");
     }
-
-    setSubmitting(true);
     try {
       const listing = await indexerClient.createListing(
         {
           ownerAddress: account.address,
-          title: title.trim(),
-          description: description.trim(),
-          category,
-          dailyRentalAmount: Number(dailyRentalAmount).toFixed(2),
-          depositAmount: Number(depositAmount).toFixed(2),
-          location: location.trim(),
-          imageUrls: imageUrl.trim() ? [imageUrl.trim()] : [],
+          title: values.title,
+          description: values.description,
+          dailyRentalAmount: values.dailyRentalAmount,
+          depositAmount: values.depositAmount,
+          location: values.location,
+          imageUrls: values.imageUrl ? [values.imageUrl] : [],
         },
         createListingSigner(account),
       );
       router.push(`/listings/${listing.id}`);
     } catch (err) {
       if (err instanceof IndexerApiError) {
-        setError(`The listing was not saved. ${err.message}`);
-      } else {
-        setError("The listing was not saved. Check your connection and try again.");
+        throw new Error(`The listing was not saved. ${err.message}`);
       }
-    } finally {
-      setSubmitting(false);
+      throw new Error("The listing was not saved. Check your connection and try again.");
     }
   }
 
@@ -102,106 +70,11 @@ export default function NewListingPage() {
         </p>
       ) : null}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1 text-sm text-charcoal">
-          Title
-          <input
-            type="text"
-            required
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            placeholder="DeWalt 20V Cordless Drill Kit"
-            className="rounded border border-rivet bg-paper px-3 py-2 text-sm text-charcoal"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm text-charcoal">
-          Category
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            className="rounded border border-rivet bg-paper px-3 py-2 text-sm text-charcoal"
-          >
-            {CATEGORIES.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm text-charcoal">
-          Description
-          <textarea
-            required
-            rows={4}
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="Condition, included accessories, pickup instructions."
-            className="rounded border border-rivet bg-paper px-3 py-2 text-sm text-charcoal"
-          />
-        </label>
-
-        <div className="grid grid-cols-2 gap-4">
-          <label className="flex flex-col gap-1 text-sm text-charcoal">
-            Daily rental (USDC)
-            <input
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              value={dailyRentalAmount}
-              onChange={(event) => setDailyRentalAmount(event.target.value)}
-              className="rounded border border-rivet bg-paper px-3 py-2 text-sm text-charcoal"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-charcoal">
-            Security deposit (USDC)
-            <input
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              value={depositAmount}
-              onChange={(event) => setDepositAmount(event.target.value)}
-              className="rounded border border-rivet bg-paper px-3 py-2 text-sm text-charcoal"
-            />
-          </label>
-        </div>
-
-        <label className="flex flex-col gap-1 text-sm text-charcoal">
-          Location
-          <input
-            type="text"
-            required
-            value={location}
-            onChange={(event) => setLocation(event.target.value)}
-            placeholder="Portland, OR"
-            className="rounded border border-rivet bg-paper px-3 py-2 text-sm text-charcoal"
-          />
-        </label>
-
-        <label className="flex flex-col gap-1 text-sm text-charcoal">
-          Photo URL (optional)
-          <input
-            type="url"
-            value={imageUrl}
-            onChange={(event) => setImageUrl(event.target.value)}
-            placeholder="https://..."
-            className="rounded border border-rivet bg-paper px-3 py-2 text-sm text-charcoal"
-          />
-        </label>
-
-        {error ? <p className="text-sm text-charcoal">{error}</p> : null}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="self-start rounded-full bg-amber px-5 py-2 text-sm font-semibold text-charcoal transition-colors hover:bg-amber/90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {submitting ? "Saving..." : account ? "List item" : "Connect wallet to list"}
-        </button>
-      </form>
+      <ListingForm
+        submitLabel={account ? "List item" : "Connect wallet to list"}
+        submittingLabel="Saving..."
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 }

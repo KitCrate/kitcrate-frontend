@@ -345,7 +345,9 @@ export function CancelAgreementButton({ agreement }: { agreement: Agreement }) {
       <div>
         <h2 className="font-display text-lg tracking-wide text-charcoal">Cancel agreement</h2>
         <p className="mt-1 text-sm text-charcoal/70">
-          Voids the agreement before the rental starts. Any funds already deposited are returned.
+          Voids the agreement before it&apos;s funded. Only available before the renter has paid
+          anything in &mdash; once funded, cancellation is no longer possible through this
+          action.
         </p>
       </div>
       {step === "idle" || step === "error" ? (

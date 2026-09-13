@@ -2,6 +2,7 @@ import { IndexerApiError, type Listing } from "@kitcrate/sdk";
 import { notFound } from "next/navigation";
 import { BookingPanel } from "@/components/BookingPanel";
 import { CheckoutTag } from "@/components/CheckoutTag";
+import { ListingOwnerActions } from "@/components/ListingOwnerActions";
 import { formatCurrency, truncateMiddle } from "@/lib/format";
 import { indexerClient } from "@/lib/indexer";
 
@@ -48,7 +49,7 @@ export default async function ListingDetailPage({
             className="h-72 w-full rounded-md border border-rivet object-cover"
           />
         ) : null}
-        <CheckoutTag serial={listing.id} eyebrow={listing.category} title={listing.title}>
+        <CheckoutTag serial={listing.id} title={listing.title}>
           <div className="flex flex-col gap-4">
             <p className="text-sm leading-relaxed text-charcoal/80">{listing.description}</p>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -71,6 +72,7 @@ export default async function ListingDetailPage({
             </dl>
           </div>
         </CheckoutTag>
+        <ListingOwnerActions listing={listing} />
         </div>
         {listing.currentlyBooked ? (
           <div className="flex flex-col gap-4 rounded-md border border-rivet bg-paper p-5">

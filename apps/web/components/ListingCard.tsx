@@ -6,7 +6,7 @@ export function ListingCard({ listing }: { listing: Listing }) {
   const thumbnail = listing.imageUrls[0];
 
   return (
-    <CheckoutTag href={`/listings/${listing.id}`} serial={listing.id} eyebrow={listing.category} title={listing.title}>
+    <CheckoutTag href={`/listings/${listing.id}`} serial={listing.id} title={listing.title}>
       <div className="flex flex-col gap-3">
         {thumbnail ? (
           // eslint-disable-next-line @next/next/no-img-element -- remote photo domain is backend-defined, not allowlisted

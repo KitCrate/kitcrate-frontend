@@ -78,15 +78,13 @@ export interface AgreementFilters {
  * Listing shape the frontend consumes. The kitcrate-backend repo owns the
  * `listings` schema and serves raw database rows (snake_case), so responses do
  * not arrive in this shape, mapListing() bridges the backend row (ListingRow)
- * to this type. `category` has no backend column yet and is a frontend-only
- * concept (see mapListing).
+ * to this type.
  */
 export interface Listing {
   id: string;
   ownerAddress: string;
   title: string;
   description: string;
-  category: string;
   dailyRentalAmount: string;
   depositAmount: string;
   imageUrls: string[];
@@ -165,7 +163,6 @@ export interface ListingSigner {
 
 export interface ListingFilters {
   ownerAddress?: string;
-  category?: string;
 }
 
 export class IndexerApiError extends Error {
@@ -267,9 +264,6 @@ export class IndexerClient {
    * uses. The backend serves database rows verbatim, so field names differ
    * (owner -> ownerAddress, daily_rate -> dailyRentalAmount, etc.) and the
    * NUMERIC amounts are coerced to strings.
-   *
-   * `category` is not currently persisted (the backend has no category
-   * column), so it defaults to "Other" on read.
    */
   private mapListing(row: ListingRow): Listing {
     return {
@@ -277,7 +271,6 @@ export class IndexerClient {
       ownerAddress: row.owner,
       title: row.title,
       description: row.description,
-      category: "Other",
       dailyRentalAmount: String(row.daily_rate),
       depositAmount: String(row.deposit),
       imageUrls: row.photo_urls ?? [],
@@ -357,8 +350,7 @@ export class IndexerClient {
 
   async listListings(filters: ListingFilters = {}): Promise<Listing[]> {
     // The backend filters listings by the `owner` query param only (see
-    // kitcrate-backend listings.ts). There is no category column yet, so a
-    // category filter cannot be honored server-side and is not sent.
+    // kitcrate-backend listings.ts).
     const query = this.buildQuery({
       owner: filters.ownerAddress,
     });
@@ -448,7 +440,6 @@ export class IndexerClient {
     if (input.dailyRentalAmount !== undefined)
       payload.daily_rate = Number(input.dailyRentalAmount);
     if (input.depositAmount !== undefined) payload.deposit = Number(input.depositAmount);
-    // category is intentionally not sent: the backend has no category column.
     const headers = await this.listingAuthHeaders(signer, "update_listing", id);
     const row = await this.request<ListingRow>(`/listings/${id}`, {
       method: "PUT",
