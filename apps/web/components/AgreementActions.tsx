@@ -305,6 +305,193 @@ export function ReleaseFundsButton({ agreement }: { agreement: Agreement }) {
   );
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+
+/**
+ * Eligibility for the two permissionless liveness-recovery calls
+ * (reclaim_funded_agreement, resolve_expired_dispute). The indexer doesn't
+ * store a dedicated funded_at/disputed_at timestamp, only updated_at (set
+ * whenever the row's status last changed) -- but as long as `status` is
+ * still exactly the one being waited on, updated_at *is* the timestamp of
+ * the event that produced it, so it's a correct stand-in here. This is
+ * only ever used to decide when to show a button; the contract enforces
+ * the real deadline independently using its own on-chain timestamps, so a
+ * client clock being briefly wrong just means the button appears a little
+ * early or late, never an incorrect on-chain outcome.
+ */
+function useRecoveryEligible(
+  agreement: Agreement,
+  waitingOnStatus: Agreement["status"],
+  timeoutMs: number,
+): boolean {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => {
+      if (agreement.status !== waitingOnStatus) return false;
+      const eligibleAt = new Date(agreement.updatedAt).getTime() + timeoutMs;
+      return Date.now() >= eligibleAt;
+    },
+    () => false,
+  );
+}
+
+/**
+ * reclaim_funded_agreement recovers a Funded agreement whose owner never
+ * called start_rental, seven days after funding. Permissionless, like
+ * ReleaseFundsButton: shown to any connected wallet, not just the renter,
+ * even though the renter is always the one who receives the refund.
+ */
+export function ReclaimFundedAgreementButton({ agreement }: { agreement: Agreement }) {
+  const { account } = useWallet();
+  const isEligible = useRecoveryEligible(agreement, "Funded", SEVEN_DAYS_MS);
+
+  const { step, setStep, error, confirm } = useAgreementAction(
+    agreement.id,
+    (address, id) => requireRentalEscrowClient().buildReclaimFundedAgreement(address, id),
+    "The agreement could not be recovered. Try again, or check its current status.",
+  );
+
+  if (!isEligible) return null;
+
+  if (step === "done") {
+    return (
+      <div className="rounded-md border border-rivet bg-paper p-5">
+        <h2 className="font-display text-lg tracking-wide text-charcoal">Agreement recovered</h2>
+        <p className="mt-2 text-sm text-charcoal/70">
+          The full rental payment and deposit have been refunded to the renter onchain. It may
+          take a moment for the status above to update.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-rivet bg-paper p-5">
+      <div>
+        <h2 className="font-display text-lg tracking-wide text-charcoal">Recover this agreement</h2>
+        <p className="mt-1 text-sm text-charcoal/70">
+          The owner never started this rental, and it&apos;s been more than seven days since it was
+          funded. Anyone can trigger a full refund to the renter from here — the owner receives
+          nothing, since no handover was ever confirmed.
+        </p>
+      </div>
+      {step === "idle" || step === "error" ? (
+        <button
+          type="button"
+          onClick={() => (account ? setStep("confirm") : undefined)}
+          className="self-start rounded-full bg-deposit-green px-5 py-2 text-sm font-semibold text-paper transition-colors hover:bg-deposit-green/90"
+        >
+          {account ? "Refund renter" : "Connect wallet to refund renter"}
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={confirm}
+            disabled={step === "signing" || step === "submitting"}
+            className="rounded-full bg-deposit-green px-5 py-2 text-sm font-semibold text-paper transition-colors hover:bg-deposit-green/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {step === "signing"
+              ? "Waiting for signature..."
+              : step === "submitting"
+                ? "Submitting..."
+                : "Confirm refund"}
+          </button>
+          {step === "confirm" ? (
+            <button
+              type="button"
+              onClick={() => setStep("idle")}
+              className="text-sm font-medium text-charcoal underline-offset-2 hover:underline"
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      )}
+      {error ? <p className="text-sm text-charcoal">{error}</p> : null}
+    </div>
+  );
+}
+
+/**
+ * resolve_expired_dispute recovers a Disputed agreement whose arbiter never
+ * called resolve_dispute, fourteen days after the claim was raised.
+ * Permissionless, same shape as ReclaimFundedAgreementButton.
+ */
+export function ResolveExpiredDisputeButton({ agreement }: { agreement: Agreement }) {
+  const { account } = useWallet();
+  const isEligible = useRecoveryEligible(agreement, "Disputed", FOURTEEN_DAYS_MS);
+
+  const { step, setStep, error, confirm } = useAgreementAction(
+    agreement.id,
+    (address, id) => requireRentalEscrowClient().buildResolveExpiredDispute(address, id),
+    "The dispute could not be resolved. Try again, or check the agreement's current status.",
+  );
+
+  if (!isEligible) return null;
+
+  if (step === "done") {
+    return (
+      <div className="rounded-md border border-rivet bg-paper p-5">
+        <h2 className="font-display text-lg tracking-wide text-charcoal">Dispute resolved</h2>
+        <p className="mt-2 text-sm text-charcoal/70">
+          The full deposit has been sent to the renter and the rental fee to the owner onchain.
+          It may take a moment for the status above to update.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border border-rivet bg-paper p-5">
+      <div>
+        <h2 className="font-display text-lg tracking-wide text-charcoal">Resolve this dispute</h2>
+        <p className="mt-1 text-sm text-charcoal/70">
+          The arbiter hasn&apos;t ruled on this claim, and it&apos;s been more than fourteen days since
+          it was raised. Anyone can trigger a fallback settlement from here: the full deposit goes
+          to the renter and the rental fee still goes to the owner. An unadjudicated claim doesn&apos;t
+          default in the claimant&apos;s favor.
+        </p>
+      </div>
+      {step === "idle" || step === "error" ? (
+        <button
+          type="button"
+          onClick={() => (account ? setStep("confirm") : undefined)}
+          className="self-start rounded-full bg-deposit-green px-5 py-2 text-sm font-semibold text-paper transition-colors hover:bg-deposit-green/90"
+        >
+          {account ? "Resolve dispute" : "Connect wallet to resolve dispute"}
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={confirm}
+            disabled={step === "signing" || step === "submitting"}
+            className="rounded-full bg-deposit-green px-5 py-2 text-sm font-semibold text-paper transition-colors hover:bg-deposit-green/90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {step === "signing"
+              ? "Waiting for signature..."
+              : step === "submitting"
+                ? "Submitting..."
+                : "Confirm resolution"}
+          </button>
+          {step === "confirm" ? (
+            <button
+              type="button"
+              onClick={() => setStep("idle")}
+              className="text-sm font-medium text-charcoal underline-offset-2 hover:underline"
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      )}
+      {error ? <p className="text-sm text-charcoal">{error}</p> : null}
+    </div>
+  );
+}
+
 /**
  * cancel_agreement is only offered before the rental starts, to the owner or
  * renter on the agreement. Cancelling an already-active rental is out of

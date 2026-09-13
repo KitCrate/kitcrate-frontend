@@ -139,6 +139,28 @@ export class RentalEscrowClient {
     return this.buildInvocation(callerAddress, "release_funds", [u64ToScVal(agreementId)]);
   }
 
+  /**
+   * reclaim_funded_agreement is permissionless once seven days have passed
+   * since funding with no start_rental call, same shape as
+   * buildReleaseFunds: any connected wallet can be the source address.
+   */
+  async buildReclaimFundedAgreement(callerAddress: string, agreementId: bigint): Promise<string> {
+    return this.buildInvocation(callerAddress, "reclaim_funded_agreement", [
+      u64ToScVal(agreementId),
+    ]);
+  }
+
+  /**
+   * resolve_expired_dispute is permissionless once fourteen days have passed
+   * since a claim was raised with no resolve_dispute call, same shape as
+   * buildReleaseFunds: any connected wallet can be the source address.
+   */
+  async buildResolveExpiredDispute(callerAddress: string, agreementId: bigint): Promise<string> {
+    return this.buildInvocation(callerAddress, "resolve_expired_dispute", [
+      u64ToScVal(agreementId),
+    ]);
+  }
+
   async buildCancelAgreement(callerAddress: string, agreementId: bigint): Promise<string> {
     return this.buildInvocation(callerAddress, "cancel_agreement", [
       addressToScVal(callerAddress),

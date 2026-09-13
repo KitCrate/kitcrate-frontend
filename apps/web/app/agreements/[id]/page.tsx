@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import {
   CancelAgreementButton,
   FundAgreementButton,
+  ReclaimFundedAgreementButton,
   ReleaseFundsButton,
+  ResolveExpiredDisputeButton,
   StartRentalButton,
 } from "@/components/AgreementActions";
 import { AgreementStatusTag } from "@/components/AgreementStatusTag";
@@ -122,8 +124,10 @@ export default async function AgreementDetailPage({
 
       <FundAgreementButton agreement={agreement} />
       <StartRentalButton agreement={agreement} />
+      <ReclaimFundedAgreementButton agreement={agreement} />
       <ClaimForm agreement={agreement} />
       <ReleaseFundsButton agreement={agreement} />
+      <ResolveExpiredDisputeButton agreement={agreement} />
       <CancelAgreementButton agreement={agreement} />
     </div>
   );
