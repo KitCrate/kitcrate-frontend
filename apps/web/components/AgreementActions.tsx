@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useSyncExternalStore } from "react";
 import { requireRentalEscrowClient } from "@/lib/contract";
 import { contractErrorMessage } from "@/lib/contract-errors";
+import { checkMultisigRequirement } from "@/lib/multisig";
 import { useWallet } from "@/lib/wallet-context";
 
 type ActionStep = "idle" | "confirm" | "signing" | "submitting" | "done" | "error";
@@ -23,24 +24,17 @@ function useAgreementAction(
     if (!account) return;
     setError(null);
     try {
-      // A Soroban invocation from an account needs signature weight meeting the
-      // account's medium threshold. When the connected wallet's key can't meet
-      // it (the account is a multisig), the network rejects the perfectly built
-      // and signed transaction with txBadAuth. Catch that here so the user sees
-      // why before they're prompted to sign a doomed transaction.
-      const client = requireRentalEscrowClient();
-      const requirement = await client.getAccountSignatureRequirement(account.address);
-      if (requirement && requirement.signerWeight < requirement.mediumThreshold) {
-        setError(
-          `Your wallet can't authorize this by itself: this account is a multisig with ` +
-            `a signature threshold of ${requirement.mediumThreshold}, but your connected key ` +
-            `only carries weight ${requirement.signerWeight}. Sign with the account's other ` +
-            `signers, or lower the account's medium threshold.`,
-        );
+      // Catch a multisig account whose connected key can't meet the medium
+      // threshold before ever prompting a signature for a transaction that
+      // was always going to fail with txBadAuth.
+      const multisigError = await checkMultisigRequirement(account.address);
+      if (multisigError) {
+        setError(multisigError);
         setStep("error");
         return;
       }
 
+      const client = requireRentalEscrowClient();
       setStep("signing");
       const unsignedXdr = await run(account.address, BigInt(agreementId));
       const signedXdr = await signXdr(unsignedXdr, {

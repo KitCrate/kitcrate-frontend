@@ -6,6 +6,7 @@ import { useState, type FormEvent } from "react";
 import { requireRentalEscrowClient } from "@/lib/contract";
 import { contractErrorMessage } from "@/lib/contract-errors";
 import { formatCurrency, formatRawTokenAmount } from "@/lib/format";
+import { checkMultisigRequirement } from "@/lib/multisig";
 import { toBaseUnits } from "@/lib/token";
 import { useWallet } from "@/lib/wallet-context";
 
@@ -52,6 +53,16 @@ export function ClaimForm({ agreement }: { agreement: Agreement }) {
     if (!account) return;
     setError(null);
     try {
+      // Catch a multisig account whose connected key can't meet the medium
+      // threshold before ever prompting a signature for a transaction that
+      // was always going to fail with txBadAuth.
+      const multisigError = await checkMultisigRequirement(account.address);
+      if (multisigError) {
+        setError(multisigError);
+        setStep("error");
+        return;
+      }
+
       setStep("signing");
       const client = requireRentalEscrowClient();
       const unsignedXdr = await client.buildRaiseClaim(
