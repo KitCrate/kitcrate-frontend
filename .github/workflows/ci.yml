@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Typecheck, lint, and SDK tests
+    name: Typecheck, lint, SDK tests, and production build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,3 +30,13 @@ jobs:
 
       - name: SDK tests
         run: npm test --workspace=@kitcrate/sdk
+
+      # A change that typechecks and lints cleanly can still break the
+      # actual production build (a static-generation error, a bad
+      # next.config.js change, anything build-time-only) -- CI previously
+      # never caught that (Phase 1 audit P1-7). No env vars are required:
+      # the app degrades gracefully to its unconfigured state (contract
+      # writes disabled, listing/agreement reads empty) rather than
+      # failing the build when NEXT_PUBLIC_* values are absent.
+      - name: Production build
+        run: npm run build
