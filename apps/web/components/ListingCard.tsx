@@ -2,7 +2,7 @@ import type { Listing } from "@kitcrate/sdk";
 import { formatCurrency } from "@/lib/format";
 import { CheckoutTag } from "./CheckoutTag";
 
-export function ListingCard({ listing }: { listing: Listing }) {
+export function ListingCard({ listing, tokenSymbol }: { listing: Listing; tokenSymbol: string }) {
   const thumbnail = listing.imageUrls[0];
 
   return (
@@ -18,7 +18,9 @@ export function ListingCard({ listing }: { listing: Listing }) {
         )}
         <p className="line-clamp-2 text-sm text-charcoal/70">{listing.description}</p>
         <div className="flex items-baseline justify-between gap-2">
-          <span className="font-mono text-sm text-charcoal">{formatCurrency(listing.dailyRentalAmount)}/day</span>
+          <span className="font-mono text-sm text-charcoal">
+            {formatCurrency(listing.dailyRentalAmount, tokenSymbol)}/day
+          </span>
           <span className="truncate text-xs text-charcoal/60">{listing.location}</span>
         </div>
       </div>

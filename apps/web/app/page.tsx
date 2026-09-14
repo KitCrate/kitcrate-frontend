@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckoutTag } from "@/components/CheckoutTag";
 import { ListingCard } from "@/components/ListingCard";
 import { indexerClient } from "@/lib/indexer";
+import { getTokenSymbolCached } from "@/lib/token";
 import type { Listing } from "@kitcrate/sdk";
 
 // Revalidate the statically-rendered homepage at most once per minute so newly
@@ -25,7 +26,7 @@ async function getListings(): Promise<Listing[]> {
 }
 
 export default async function HomePage() {
-  const listings = await getListings();
+  const [listings, tokenSymbol] = await Promise.all([getListings(), getTokenSymbolCached()]);
 
   return (
     <div className="flex flex-col gap-14">
@@ -66,11 +67,11 @@ export default async function HomePage() {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div>
               <dt className="text-charcoal/60">Rental</dt>
-              <dd className="font-mono text-charcoal">65.00 USDC/day</dd>
+              <dd className="font-mono text-charcoal">65.00 {tokenSymbol}/day</dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Deposit</dt>
-              <dd className="font-mono text-deposit-green">400.00 USDC</dd>
+              <dd className="font-mono text-deposit-green">400.00 {tokenSymbol}</dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Started</dt>
@@ -89,7 +90,7 @@ export default async function HomePage() {
         {listings.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
+              <ListingCard key={listing.id} listing={listing} tokenSymbol={tokenSymbol} />
             ))}
           </div>
         ) : (

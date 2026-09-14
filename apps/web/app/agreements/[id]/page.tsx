@@ -12,6 +12,7 @@ import { AgreementStatusTag } from "@/components/AgreementStatusTag";
 import { ClaimForm } from "@/components/ClaimForm";
 import { formatRawTokenAmount, formatDate, truncateMiddle } from "@/lib/format";
 import { indexerClient } from "@/lib/indexer";
+import { getTokenSymbolCached } from "@/lib/token";
 
 async function getAgreement(id: string): Promise<Agreement | null> {
   if (!indexerClient) return null;
@@ -50,9 +51,10 @@ export default async function AgreementDetailPage({
   const agreement = await getAgreement(id);
   if (!agreement) notFound();
 
-  const [events, listing] = await Promise.all([
+  const [events, listing, tokenSymbol] = await Promise.all([
     getAgreementEvents(id),
     getListing(agreement.itemRef),
+    getTokenSymbolCached(),
   ]);
 
   return (
@@ -72,11 +74,15 @@ export default async function AgreementDetailPage({
           <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
             <div>
               <dt className="text-charcoal/60">Rental</dt>
-              <dd className="font-mono text-charcoal">{formatRawTokenAmount(agreement.rentalAmount)}</dd>
+              <dd className="font-mono text-charcoal">
+                {formatRawTokenAmount(agreement.rentalAmount, tokenSymbol)}
+              </dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Deposit</dt>
-              <dd className="font-mono text-deposit-green">{formatRawTokenAmount(agreement.depositAmount)}</dd>
+              <dd className="font-mono text-deposit-green">
+                {formatRawTokenAmount(agreement.depositAmount, tokenSymbol)}
+              </dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Starts</dt>
@@ -125,7 +131,7 @@ export default async function AgreementDetailPage({
       <FundAgreementButton agreement={agreement} />
       <StartRentalButton agreement={agreement} />
       <ReclaimFundedAgreementButton agreement={agreement} />
-      <ClaimForm agreement={agreement} />
+      <ClaimForm agreement={agreement} tokenSymbol={tokenSymbol} />
       <ReleaseFundsButton agreement={agreement} />
       <ResolveExpiredDisputeButton agreement={agreement} />
       <CancelAgreementButton agreement={agreement} />

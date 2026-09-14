@@ -6,13 +6,22 @@ import { useEffect, useState } from "react";
 import { CheckoutTag, type CheckoutTagStatus } from "@/components/CheckoutTag";
 import { formatRawTokenAmount, formatShortDate } from "@/lib/format";
 import { indexerClient } from "@/lib/indexer";
+import { useTokenSymbol } from "@/lib/token-symbol-context";
 import { useWallet } from "@/lib/wallet-context";
 
 function toTagStatus(status: Agreement["status"]): CheckoutTagStatus {
   return status.toLowerCase() as CheckoutTagStatus;
 }
 
-function AgreementRow({ agreement, role }: { agreement: Agreement; role: "owner" | "renter" }) {
+function AgreementRow({
+  agreement,
+  role,
+  tokenSymbol,
+}: {
+  agreement: Agreement;
+  role: "owner" | "renter";
+  tokenSymbol: string;
+}) {
   return (
     <CheckoutTag
       href={`/agreements/${agreement.id}`}
@@ -28,11 +37,13 @@ function AgreementRow({ agreement, role }: { agreement: Agreement; role: "owner"
         </div>
         <div>
           <dt className="text-charcoal/60">Rental</dt>
-          <dd className="font-mono text-charcoal">{formatRawTokenAmount(agreement.rentalAmount)}</dd>
+          <dd className="font-mono text-charcoal">{formatRawTokenAmount(agreement.rentalAmount, tokenSymbol)}</dd>
         </div>
         <div>
           <dt className="text-charcoal/60">Deposit</dt>
-          <dd className="font-mono text-deposit-green">{formatRawTokenAmount(agreement.depositAmount)}</dd>
+          <dd className="font-mono text-deposit-green">
+            {formatRawTokenAmount(agreement.depositAmount, tokenSymbol)}
+          </dd>
         </div>
         <div>
           <dt className="text-charcoal/60">Starts</dt>
@@ -54,6 +65,7 @@ function AgreementSection({
   emptyLabel,
   agreements,
   role,
+  tokenSymbol,
 }: {
   title: string;
   emptyMessage: string;
@@ -61,6 +73,7 @@ function AgreementSection({
   emptyLabel: string;
   agreements: Agreement[];
   role: "owner" | "renter";
+  tokenSymbol: string;
 }) {
   return (
     <section className="flex flex-col gap-4">
@@ -68,7 +81,7 @@ function AgreementSection({
       {agreements.length > 0 ? (
         <div className="grid gap-5 sm:grid-cols-2">
           {agreements.map((agreement) => (
-            <AgreementRow key={agreement.id} agreement={agreement} role={role} />
+            <AgreementRow key={agreement.id} agreement={agreement} role={role} tokenSymbol={tokenSymbol} />
           ))}
         </div>
       ) : (
@@ -88,6 +101,7 @@ function AgreementSection({
 
 export default function AgreementsPage() {
   const { account, status: walletStatus, connect } = useWallet();
+  const tokenSymbol = useTokenSymbol();
   const [owned, setOwned] = useState<Agreement[]>([]);
   const [rented, setRented] = useState<Agreement[]>([]);
   const [loading, setLoading] = useState(false);
@@ -162,6 +176,7 @@ export default function AgreementsPage() {
             emptyLabel="Browse equipment"
             agreements={rented}
             role="renter"
+            tokenSymbol={tokenSymbol}
           />
           <AgreementSection
             title="Listed by you"
@@ -170,6 +185,7 @@ export default function AgreementsPage() {
             emptyLabel="List an item"
             agreements={owned}
             role="owner"
+            tokenSymbol={tokenSymbol}
           />
         </>
       )}

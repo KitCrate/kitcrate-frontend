@@ -22,7 +22,7 @@ function nightsBetween(startDate: string, endDate: string): number {
   return Math.round((end - start) / 86_400_000);
 }
 
-export function BookingPanel({ listing }: { listing: Listing }) {
+export function BookingPanel({ listing, tokenSymbol }: { listing: Listing; tokenSymbol: string }) {
   const router = useRouter();
   const { account, status: walletStatus, connect } = useWallet();
   const [startDate, setStartDate] = useState("");
@@ -172,11 +172,13 @@ export function BookingPanel({ listing }: { listing: Listing }) {
             </div>
             <div>
               <dt className="text-charcoal/60">Rental total</dt>
-              <dd className="font-mono text-charcoal">{rentalTotal ? formatCurrency(rentalTotal) : "-"}</dd>
+              <dd className="font-mono text-charcoal">
+                {rentalTotal ? formatCurrency(rentalTotal, tokenSymbol) : "-"}
+              </dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Security deposit</dt>
-              <dd className="font-mono text-deposit-green">{formatCurrency(listing.depositAmount)}</dd>
+              <dd className="font-mono text-deposit-green">{formatCurrency(listing.depositAmount, tokenSymbol)}</dd>
             </div>
           </dl>
           <p className="text-xs text-charcoal/70">

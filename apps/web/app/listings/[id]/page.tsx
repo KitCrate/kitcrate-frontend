@@ -5,6 +5,7 @@ import { CheckoutTag } from "@/components/CheckoutTag";
 import { ListingOwnerActions } from "@/components/ListingOwnerActions";
 import { formatCurrency, truncateMiddle } from "@/lib/format";
 import { indexerClient } from "@/lib/indexer";
+import { getTokenSymbolCached } from "@/lib/token";
 
 async function getListing(id: string): Promise<Listing | null> {
   if (!indexerClient) return null;
@@ -22,7 +23,7 @@ export default async function ListingDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const listing = await getListing(id);
+  const [listing, tokenSymbol] = await Promise.all([getListing(id), getTokenSymbolCached()]);
   if (!listing) notFound();
 
   return (
@@ -55,11 +56,11 @@ export default async function ListingDetailPage({
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
                 <dt className="text-charcoal/60">Daily rental</dt>
-                <dd className="font-mono text-charcoal">{formatCurrency(listing.dailyRentalAmount)}</dd>
+                <dd className="font-mono text-charcoal">{formatCurrency(listing.dailyRentalAmount, tokenSymbol)}</dd>
               </div>
               <div>
                 <dt className="text-charcoal/60">Security deposit</dt>
-                <dd className="font-mono text-deposit-green">{formatCurrency(listing.depositAmount)}</dd>
+                <dd className="font-mono text-deposit-green">{formatCurrency(listing.depositAmount, tokenSymbol)}</dd>
               </div>
               <div>
                 <dt className="text-charcoal/60">Location</dt>
@@ -83,7 +84,7 @@ export default async function ListingDetailPage({
             </p>
           </div>
         ) : (
-          <BookingPanel listing={listing} />
+          <BookingPanel listing={listing} tokenSymbol={tokenSymbol} />
         )}
       </div>
     </div>

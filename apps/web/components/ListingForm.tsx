@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useTokenSymbol } from "@/lib/token-symbol-context";
 
 export interface ListingFormValues {
   title: string;
@@ -43,6 +44,7 @@ export function ListingForm({
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const tokenSymbol = useTokenSymbol();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -92,7 +94,7 @@ export function ListingForm({
 
       <div className="grid grid-cols-2 gap-4">
         <label className="flex flex-col gap-1 text-sm text-charcoal">
-          Daily rental (USDC)
+          Daily rental ({tokenSymbol})
           <input
             type="number"
             required
@@ -104,7 +106,7 @@ export function ListingForm({
           />
         </label>
         <label className="flex flex-col gap-1 text-sm text-charcoal">
-          Security deposit (USDC)
+          Security deposit ({tokenSymbol})
           <input
             type="number"
             required

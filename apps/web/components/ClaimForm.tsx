@@ -17,7 +17,7 @@ type Step = "form" | "review" | "signing" | "submitting" | "done" | "error";
  * active. Renders nothing for anyone else, or once the window for raising a
  * claim has passed.
  */
-export function ClaimForm({ agreement }: { agreement: Agreement }) {
+export function ClaimForm({ agreement, tokenSymbol }: { agreement: Agreement; tokenSymbol: string }) {
   const router = useRouter();
   const { account } = useWallet();
   const [claimAmount, setClaimAmount] = useState("");
@@ -38,7 +38,9 @@ export function ClaimForm({ agreement }: { agreement: Agreement }) {
       return;
     }
     if (amount > Number(agreement.depositAmount)) {
-      setError(`The claim cannot exceed the deposit of ${formatRawTokenAmount(agreement.depositAmount)}.`);
+      setError(
+        `The claim cannot exceed the deposit of ${formatRawTokenAmount(agreement.depositAmount, tokenSymbol)}.`,
+      );
       return;
     }
     if (!evidenceRef.trim()) {
@@ -122,7 +124,7 @@ export function ClaimForm({ agreement }: { agreement: Agreement }) {
       {step === "form" || step === "error" ? (
         <form onSubmit={handleReview} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1 text-sm text-charcoal">
-            Claim amount (USDC)
+            Claim amount ({tokenSymbol})
             <input
               type="number"
               min="0"
@@ -157,11 +159,15 @@ export function ClaimForm({ agreement }: { agreement: Agreement }) {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div>
               <dt className="text-charcoal/60">Claim amount</dt>
-              <dd className="font-mono text-charcoal">{formatCurrency(Number(claimAmount).toFixed(2))}</dd>
+              <dd className="font-mono text-charcoal">
+                {formatCurrency(Number(claimAmount).toFixed(2), tokenSymbol)}
+              </dd>
             </div>
             <div>
               <dt className="text-charcoal/60">Deposit held</dt>
-              <dd className="font-mono text-deposit-green">{formatRawTokenAmount(agreement.depositAmount)}</dd>
+              <dd className="font-mono text-deposit-green">
+                {formatRawTokenAmount(agreement.depositAmount, tokenSymbol)}
+              </dd>
             </div>
             <div className="col-span-2">
               <dt className="text-charcoal/60">Evidence</dt>
