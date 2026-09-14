@@ -12,20 +12,36 @@ const tokenContractId = process.env.NEXT_PUBLIC_TOKEN_CONTRACT_ID;
 const rpcUrl = process.env.NEXT_PUBLIC_SOROBAN_RPC_URL;
 
 /**
+ * "native" is not a currency ticker -- it's the literal, protocol-level
+ * symbol every Stellar network's native-asset Stellar Asset Contract
+ * reports for itself, on testnet, mainnet, or any other network, always.
+ * Every other Stellar tool (Freighter, stellar.expert, Laboratory) shows
+ * "XLM" for it instead of the raw SEP-41 value, for the same reason.
+ *
+ * This is a translation of a known, universal constant, not a guess about
+ * which token is configured -- unlike the hardcoded "USDC" this file used
+ * to have, mapping "native" can't silently go wrong if the configured
+ * token changes: a real, different token's own real symbol (e.g. a
+ * stablecoin's "USDC") passes through this function unchanged, since it
+ * only ever matches the literal string "native".
+ */
+function toDisplaySymbol(rawSymbol: string): string {
+  return rawSymbol === "native" ? "XLM" : rawSymbol;
+}
+
+/**
  * The configured escrow token's real symbol, read live from the token
- * contract's own instance storage rather than assumed. Memoized at module
- * scope: every caller across a given server instance shares the same
- * in-flight or resolved promise instead of re-querying the RPC per
- * request. Falls back to the generic "tokens" if the app isn't configured
- * with a token contract, or if the read fails -- never to a specific,
- * possibly-wrong currency guess.
+ * contract's own instance storage rather than assumed, then passed through
+ * toDisplaySymbol (see its own comment for the one case that changes).
+ * Memoized at module scope: every caller across a given server instance
+ * shares the same in-flight or resolved promise instead of re-querying the
+ * RPC per request. Falls back to the generic "tokens" if the app isn't
+ * configured with a token contract, or if the read fails -- never to a
+ * specific, possibly-wrong currency guess.
  *
  * This replaced a hardcoded "USDC" in lib/format.ts that silently drifted
  * out of sync once the deployed contract's escrow token turned out to be
- * native XLM. Note the real value this resolves to for the current
- * deployment is "native" (that token's own self-reported symbol, per
- * SEP-41), not "XLM" -- deliberately not relabeled here, see
- * getTokenMetadata's own doc comment for why.
+ * native XLM.
  */
 let symbolPromise: Promise<string> | null = null;
 
@@ -34,7 +50,7 @@ export function getTokenSymbolCached(): Promise<string> {
     symbolPromise =
       tokenContractId && rpcUrl
         ? getTokenMetadata({ tokenContractId, rpcUrl })
-            .then((metadata) => metadata.symbol || "tokens")
+            .then((metadata) => (metadata.symbol ? toDisplaySymbol(metadata.symbol) : "tokens"))
             .catch(() => "tokens")
         : Promise.resolve("tokens");
   }
